@@ -106,9 +106,7 @@ class Feedzy_Rss_Feeds {
 		self::$plugin_name = 'feedzy-rss-feeds';
 		self::$version     = '4.4.16';
 		self::$instance->load_dependencies();
-		self::$instance->set_locale();
 		self::$instance->define_admin_hooks();
-
 	}
 
 	/**
@@ -132,7 +130,6 @@ class Feedzy_Rss_Feeds {
 		self::$instance->loader   = new Feedzy_Rss_Feeds_Loader();
 		self::$instance->upgrader = new Feedzy_Rss_Feeds_Upgrader();
 		self::$instance->admin    = new Feedzy_Rss_Feeds_Admin( self::$instance->get_plugin_name(), self::$instance->get_version() );
-
 	}
 
 	/**
@@ -156,25 +153,6 @@ class Feedzy_Rss_Feeds {
 	 */
 	public static function get_version() {
 		return self::$version;
-	}
-
-	/**
-	 * Define the locale for this plugin for internationalization.
-	 *
-	 * Uses the Feedzy_Rss_Feeds_i18n class in order to set the domain and to register the hook
-	 * with WordPress.
-	 *
-	 * @since    3.0.0
-	 * @access   private
-	 */
-	private function set_locale() {
-		/**
-		 * The class responsible for defining internationalization functionality
-		 * of the plugin.
-		 */
-		$plugin_i18n = new Feedzy_Rss_Feeds_i18n();
-		self::$instance->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
-
 	}
 
 	/**
@@ -228,8 +206,13 @@ class Feedzy_Rss_Feeds {
 
 		add_shortcode( 'feedzy-rss', array( self::$instance->admin, 'feedzy_rss' ) );
 
-		$plugin_widget = new feedzy_wp_widget();
-		self::$instance->loader->add_action( 'widgets_init', $plugin_widget, 'registerWidget', 10 );
+		add_action(
+			'widgets_init',
+			function () {
+				register_widget( 'feedzy_wp_widget' );
+			}
+		);
+
 		self::$instance->loader->add_action( 'rest_api_init', self::$instance->admin, 'rest_route', 10 );
 
 		// Wizard screen setup.
@@ -288,6 +271,8 @@ class Feedzy_Rss_Feeds {
 			$this->loader->add_action( 'feedzy_item_keyword', $plugin_conditions, 'evaluate_conditions', 10, 5 );
 		}
 
+		$plugin_slug = FEEDZY_DIRNAME . '/' . basename( FEEDZY_BASEFILE );
+		$this->loader->add_filter( "plugin_action_links_$plugin_slug", self::$instance->admin, 'plugin_actions', 10, 2 );
 		if ( ! defined( 'TI_UNIT_TESTING' ) ) {
 			add_action(
 				'plugins_loaded',
@@ -331,5 +316,4 @@ class Feedzy_Rss_Feeds {
 	public function get_admin() {
 		return self::$instance->admin;
 	}
-
 }

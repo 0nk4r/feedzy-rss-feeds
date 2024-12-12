@@ -351,7 +351,6 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 				return $src;
 			}
 		}
-
 	}
 
 	/**
@@ -405,7 +404,7 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 				}
 				$attributes .= 'data-' . esc_attr( $key ) . '="' . esc_attr( $val ) . '"';
 			}
-			$lazyload_cache_key = md5( sprintf( 'feedzy-lazy-%s', ( is_array( $feed_url ) ? implode( ',', $feed_url ) : $feed_url ) ) );
+			$lazyload_cache_key = md5( sprintf( 'feedzy-lazy-%s-%d-%d', ( is_array( $feed_url ) ? implode( ',', $feed_url ) : $feed_url ), ( ! empty( $sc['max'] ) ? $sc['max'] : 1 ), ( ! empty( $sc['offset'] ) ? $sc['offset'] : 0 ) ) );
 			$content            = get_transient( $lazyload_cache_key );
 
 			// the first time the shortcode is being called it will not have any content.
@@ -530,7 +529,7 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 		$content = $this->render_content( $sc, $feed, $feed_url, '' );
 
 		// save the content as a transient so that whenever the feed is refreshed next, this stale content is displayed first.
-		$lazyload_cache_key = md5( sprintf( 'feedzy-lazy-%s', ( is_array( $feed_url ) ? implode( ',', $feed_url ) : $feed_url ) ) );
+		$lazyload_cache_key = md5( sprintf( 'feedzy-lazy-%s-%d-%d', ( is_array( $feed_url ) ? implode( ',', $feed_url ) : $feed_url ), ( ! empty( $sc['max'] ) ? $sc['max'] : 1 ), ( ! empty( $sc['offset'] ) ? $sc['offset'] : 0 ) ) );
 		set_transient( $lazyload_cache_key, $content, apply_filters( 'feedzy_lazyload_cache_time', DAY_IN_SECONDS, $feed_url ) );
 
 		wp_send_json_success( array( 'content' => $content ) );
@@ -844,22 +843,6 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 			$feed->set_useragent( apply_filters( 'http_headers_useragent', $set_server_agent ) );
 		}
 
-		global $feedzy_current_error_reporting;
-		$feedzy_current_error_reporting = error_reporting();
-
-		// to avoid the Warning! Non-numeric value encountered. This can be removed once SimplePie in core is fixed.
-		if ( version_compare( phpversion(), '7.1', '>=' ) ) {
-			error_reporting( E_ALL & ~E_WARNING & ~E_DEPRECATED );
-			// reset the error_reporting back to its original value.
-			add_action(
-				'shutdown',
-				function() {
-					global $feedzy_current_error_reporting;
-					error_reporting( $feedzy_current_error_reporting );
-				}
-			);
-		}
-
 		$feed->init();
 
 		if ( ! $feed->get_type() ) {
@@ -944,8 +927,7 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 				}
 				if ( $this->check_valid_source( $url, $cache, $source_type ) ) {
 					$valid_feed_url[] = $url;
-				} else {
-					if ( $echo ) {
+				} elseif ( $echo ) {
 						echo wp_kses_post(
 							sprintf(
 							// translators: %s: Feed URL.
@@ -953,7 +935,6 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 								'<b>' . esc_url( $url ) . '</b>'
 							)
 						);
-					}
 				}
 			}
 		} else {
@@ -966,8 +947,7 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 			}
 			if ( $this->check_valid_source( $feed_url, $cache, $source_type ) ) {
 				$valid_feed_url[] = $feed_url;
-			} else {
-				if ( $echo ) {
+			} elseif ( $echo ) {
 					echo wp_kses_post(
 						sprintf(
 							// translators: %s: Feed URL.
@@ -975,7 +955,6 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 							'<b>' . esc_url( $feed_url ) . '</b>'
 						)
 					);
-				}
 			}
 		}
 
@@ -1119,7 +1098,7 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 				$feed_title['rss_classes'][]         = $main_class;
 				$feed_title['disable_default_style'] = true;
 			}
-			$this->shortcode_count++;
+			++$this->shortcode_count;
 		}
 		$class[]  = $main_class;
 		$content .= '<div class="' . esc_attr( implode( ' ', $class ) ) . '">';
@@ -1300,12 +1279,10 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 							$feed_url[] = preg_replace( '/^https:/i', 'http:', $f );
 						}
 					}
-				} else {
-					if ( FEEDZY_ALLOW_HTTPS ) {
+				} elseif ( FEEDZY_ALLOW_HTTPS ) {
 						$feed_url[] = $feed;
 					} else {
 						$feed_url[] = preg_replace( '/^https:/i', 'http:', $feed );
-					}
 				}
 			}
 			if ( count( $feed_url ) === 1 ) {
@@ -1348,9 +1325,9 @@ abstract class Feedzy_Rss_Feeds_Admin_Abstract {
 					$item_attr = preg_replace( '/ style=\\"[^\\"]*\\"/', '', $item_attr );
 				}
 				$feed_items[ $count ]['itemAttr'] = $item_attr;
-				$count++;
+				++$count;
 			}
-			$index++;
+			++$index;
 		}
 		return $feed_items;
 	}
